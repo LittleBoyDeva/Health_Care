@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Health Care</string>
     <string name="settings">Settings</string>
+    <string name="gps_request_for_p2p">Due to change in permission strategy of Android 6.0, App need location permission in order to Scan wifi devices.</string>
+    <string name="wifi_request_for_p2p">App need to Turn on wifi in order to Scan nearby devices.</string>
+    <string name="turn_on_wifi">Turn on WIFI</string>
+    <string name="scan">Scan</string>
 </resources>

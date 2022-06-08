@@ -1,9 +1,9 @@
 package com.android.healthcare;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
+import android.annotation.SuppressLint;
+import android.content.Intent;
+import android.location.LocationManager;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -11,13 +11,21 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
+import android.widget.CompoundButton;
+import android.widget.Switch;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Objects;
 
@@ -25,16 +33,16 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+    LocationManager lm;
+    public WifiManager mWifiManager;
+    ServerSocket serverSocket;
+    private PrintWriter output;
+    private BufferedReader input;
+
+    Button button;
     // Tag for logging
     private final String TAG = getClass().getSimpleName();
 
-    // AsyncTask object that manages the connection in a separate thread
-    WiFiSocketTask wifiTask = null;
-
-    // UI elements
-    TextView textStatus, textRX, textTX;
-    EditText editTextAddress, editTextPort, editSend;
-    Button buttonConnect, buttonSend;
 
 
 
@@ -48,18 +56,19 @@ public class MainActivity extends AppCompatActivity {
         Objects.requireNonNull(getSupportActionBar()).setTitle(R.string.app_name);
 
 
-        // Save references to UI elements
-        textStatus = findViewById(R.id.textStatus);
-        textRX = findViewById(R.id.textRX);
-        textTX = findViewById(R.id.textTX);
-        editTextAddress = findViewById(R.id.address);
-        editTextPort = findViewById(R.id.port);
-        editSend = findViewById(R.id.editSend);
-        buttonConnect = findViewById(R.id.connect);
-        buttonSend = findViewById(R.id.buttonSend);
+        lm = (LocationManager) this.getApplicationContext().getSystemService(LOCATION_SERVICE);
+        mWifiManager = (WifiManager) this.getApplicationContext().getSystemService(WIFI_SERVICE);
 
-        // Disable send button until a connection is made
-        buttonSend.setEnabled(false);
+
+        button = findViewById(R.id.button);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                scan();
+            }
+        });
+
+        WiFiSocketTask wifi= new  WiFiSocketTask("localhost",9600);
 
     }
 
@@ -76,99 +85,97 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    public void scan() {
 
+        if (locationGPS()) {
+            alertDialogForGPSP2P();
 
-    /**
-     * Helper function, print a status to both the UI and program log.
-     */
-    void setStatus(String s) {
-        Log.v(TAG, s);
-        textStatus.setText(s);
+        } else {
+            if (mWifiManager.isWifiEnabled()) {
+                //DO NEEDS
+            } else {
+                alertDialogForWifiP2P();
+            }
+        }
+
     }
 
-    /**
-     * Try to start a connection with the specified remote host.
-     */
-    public void connectButtonPressed(View v) {
 
-        if(wifiTask != null) {
-            setStatus("Already connected!");
-            return;
-        }
+    private void alertDialogForGPSP2P() {
+        // notify user
+        new AlertDialog.Builder(this)
+                .setTitle("GPS not enabled")
+                .setMessage(R.string.gps_request_for_p2p)
+                .setPositiveButton("allow", (paramDialogInterface, paramInt) -> {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                    startActivity(intent);
+                })
+                .setNegativeButton("deny", null)
+                .show();
+
+    }
+
+    private boolean locationGPS() {
+
+        boolean gps_enabled = false;
 
         try {
-            // Get the remote host from the UI and start the thread
-            String host = editTextAddress.getText().toString();
-            int port = Integer.parseInt(editTextPort.getText().toString());
-
-            // Start the asyncronous task thread
-            setStatus("Attempting to connect...");
-            wifiTask = new WiFiSocketTask(host, port);
-            wifiTask.execute();
-
+            gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
         } catch (Exception e) {
-            e.printStackTrace();
-            setStatus("Invalid address/port!");
-        }
-    }
-
-    /**
-     * Disconnect from the connection.
-     */
-    public void disconnectButtonPressed(View v) {
-
-        if(wifiTask == null) {
-            setStatus("Already disconnected!");
-            return;
+            Log.e("TAG","error while checking GPS");
         }
 
-        wifiTask.disconnect();
-        setStatus("Disconnecting...");
+        return !gps_enabled;
     }
 
-    /**
-     * Invoked by the AsyncTask when the connection is successfully established.
-     */
-    private void connected() {
-        setStatus("Connected.");
-        buttonSend.setEnabled(true);
+
+    private void alertDialogForWifiP2P() {
+        // notify user
+        new AlertDialog.Builder(this)
+                .setTitle("Wifi not enabled")
+                .setMessage(R.string.wifi_request_for_p2p)
+                .setPositiveButton("allow", (paramDialogInterface, paramInt) -> {
+                    try {
+                        Intent panelIntent = new Intent(android.provider.Settings.Panel.ACTION_WIFI);
+                        startActivity(panelIntent);
+
+                    } catch (Exception e) {
+                        Log.e("TAG",e.toString());
+
+                        try {
+                            Intent panelIntent = new Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY);
+                            startActivity(panelIntent);
+                        } catch (Exception ignored) {
+                            Log.e("TAG","Turn on WIFI manually");
+                        }
+
+                    }
+                })
+                .setNegativeButton("deny", null)
+                .show();
+
     }
 
-    /**
-     * Invoked by the AsyncTask when the connection ends..
-     */
-    private void disconnected() {
-        setStatus("Disconnected.");
-        buttonSend.setEnabled(false);
-        textRX.setText("");
-        textTX.setText("");
-        wifiTask = null;
-    }
 
-    /**
-     * Invoked by the AsyncTask when a newline-delimited message is received.
-     */
-    private void gotMessage(String msg) {
-        textRX.setText(msg);
-        Log.v(TAG, "[RX] " + msg);
-    }
 
-    /**
-     * Send the message typed in the input field using the AsyncTask.
-     */
-    public void sendButtonPressed(View v) {
 
-        if(wifiTask == null) return;
 
-        String msg = editSend.getText().toString();
-        if(msg.length() == 0) return;
 
-        wifiTask.sendMessage(msg);
-        editSend.setText("");
 
-        textTX.setText(msg);
-        Log.v(TAG, "[TX] " + msg);
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /**
      * AsyncTask that connects to a remote host over WiFi and reads/writes the connection
@@ -191,11 +198,6 @@ public class MainActivity extends AppCompatActivity {
         BufferedReader inStream = null;
         OutputStream outStream = null;
 
-        // Signal to disconnect from the socket
-        private boolean disconnectSignal = false;
-
-        // Socket timeout - close if no messages received (ms)
-        private int timeout = 5000;
 
         // Constructor
         WiFiSocketTask(String address, int port) {
@@ -211,41 +213,17 @@ public class MainActivity extends AppCompatActivity {
 
             try {
 
-                // Open the socket and connect to it
-                socket = new Socket();
-                socket.connect(new InetSocketAddress("localhost", port), timeout);
+                serverSocket = new ServerSocket(9600);
 
-                // Get the input and output streams
-                inStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                outStream = socket.getOutputStream();
-
-                // Confirm that the socket opened
-                if(socket.isConnected()) {
-
-                    // Make sure the input stream becomes ready, or timeout
-                    long start = System.currentTimeMillis();
-                    while(!inStream.ready()) {
-                        long now = System.currentTimeMillis();
-                        if(now - start > timeout) {
-                            Log.e(TAG, "Input stream timeout, disconnecting!");
-                            disconnectSignal = true;
-                            break;
-                        }
-                    }
-                } else {
-                    Log.e(TAG, "Socket did not connect!");
-                    disconnectSignal = true;
+                socket = serverSocket.accept();
+                if (socket.isConnected()){
+                    Toast.makeText(getApplicationContext(),"CONNECTED",Toast.LENGTH_LONG).show();
+                }else {
+                    Toast.makeText(getApplicationContext(),"NOT CONNECTED",Toast.LENGTH_LONG).show();
                 }
+                output = new PrintWriter(socket.getOutputStream());
+                input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-                // Read messages in a loop until disconnected
-                while(!disconnectSignal) {
-
-                    // Parse a message with a newline character
-                    String msg = inStream.readLine();
-
-                    // Send it to the UI thread
-                    publishProgress(msg);
-                }
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -278,45 +256,10 @@ public class MainActivity extends AppCompatActivity {
             String msg = values[0];
             if(msg == null) return;
 
-            // Handle meta-messages
-            switch (msg) {
-                case CONNECTED_MSG:
-                    connected();
-                    break;
-                case DISCONNECTED_MSG:
-                    disconnected();
-                    break;
-                case PING_MSG:
 
-                    break;
-
-                // Invoke the gotMessage callback for all other messages
-                default:
-                    gotMessage(msg);
-                    break;
-            }
 
             super.onProgressUpdate(values);
         }
 
-        /**
-         * Write a message to the connection. Runs in UI thread.
-         */
-        public void sendMessage(String data) {
-
-            try {
-                outStream.write(data.getBytes());
-                outStream.write('\n');
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        /**
-         * Set a flag to disconnect from the socket.
-         */
-        public void disconnect() {
-            disconnectSignal = true;
-        }
     }
 }
