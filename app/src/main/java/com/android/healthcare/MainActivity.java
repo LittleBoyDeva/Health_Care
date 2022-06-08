@@ -62,8 +62,7 @@ public class MainActivity extends AppCompatActivity {
     Button button;
 
     String URL = "https://api.thingspeak.com/update?api_key=0DFD2MDEODZ10ZN3&field1=5";
-    // Tag for logging
-    private final String TAG = getClass().getSimpleName();
+
 
 
 
@@ -93,11 +92,65 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        Log.e("TAG","-----------------start---------------------------------");
+
         new  WiFiSocketTask("localhost",9600).execute();
 
-        //loadToServer loadToServer = new loadToServer(URL);
-        new loadToServer(URL).execute();
+        new  WiFiSocketTasks().execute();
 
+        loadToServer loadToServer = new loadToServer(URL);
+        new loadToServer(URL).execute();
+        Log.e("TAG","--------------------end------------------------------");
+
+        Thread thread = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    while(true) {
+                        sleep(1000);
+                        Log.e("TAG","----------------6----------------------------------");
+
+                        HttpClient httpclient;
+                        HttpResponse response = null;
+
+                        StatusLine statusLine ;
+
+                        try {
+                            httpclient = new DefaultHttpClient();
+                            response = httpclient.execute(new HttpGet(URL));
+
+                        }catch (Exception e1){
+                            Log.e("TAG",e1.toString());
+                        }
+                        statusLine = response.getStatusLine();
+                        try {
+
+                            if(statusLine.getStatusCode() == HttpStatus.SC_OK){
+                                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                                response.getEntity().writeTo(out);
+                                String responseString = out.toString();
+                                Toast.makeText(getApplicationContext(),responseString,Toast.LENGTH_LONG).show();
+                                out.close();
+                                //..more logic
+                            } else{
+                                //Closes the connection.
+                                response.getEntity().getContent().close();
+                                throw new IOException(statusLine.getReasonPhrase());
+                            }
+                        }catch (Exception e){
+                            Log.e("TAG",e.toString());
+                        }
+
+                        Log.e("TAG","---------------------7-----------------------------");
+                        //handler.post(this);
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+
+        thread.start();
 
     }
 
@@ -203,44 +256,14 @@ public class MainActivity extends AppCompatActivity {
         String URL;
         loadToServer(String url){
             this.URL = url;
+            Log.e("TAG","-------------1-------------------------------------");
         }
 
 
         @Override
         protected Void doInBackground(Void... voids) {
 
-            HttpClient httpclient;
-            HttpResponse response = null;
 
-            StatusLine statusLine ;
-
-            try {
-                httpclient = new DefaultHttpClient();
-                response = httpclient.execute(new HttpGet(URL));
-
-            }catch (Exception e1){
-                Log.e("TAG",e1.toString());
-            }
-            statusLine = response.getStatusLine();
-            try {
-
-                if(statusLine.getStatusCode() == HttpStatus.SC_OK){
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    response.getEntity().writeTo(out);
-                    String responseString = out.toString();
-                    Toast.makeText(getApplicationContext(),responseString,Toast.LENGTH_LONG).show();
-                    out.close();
-                    //..more logic
-                } else{
-                    //Closes the connection.
-                    response.getEntity().getContent().close();
-                    throw new IOException(statusLine.getReasonPhrase());
-                }
-            }catch (Exception e){
-                Log.e("TAG",e.toString());
-            }
-
-            Log.e("TAG","--------------------------------------------------");
             return null;
         }
 
@@ -274,6 +297,8 @@ public class MainActivity extends AppCompatActivity {
         WiFiSocketTask(String address, int port) {
             this.address = address;
             this.port = port;
+
+            Log.e("TAG","------------------3--------------------------------");
         }
 
         /**
@@ -299,7 +324,7 @@ public class MainActivity extends AppCompatActivity {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                Log.e(TAG, "Error in socket thread!");
+                Log.e("TAG", "Error in socket thread!");
             }
 
             // Send a disconnect message
@@ -313,6 +338,49 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            return null;
+        }
+
+        /**
+         * This function runs in the UI thread but receives data from the
+         * doInBackground() function running in a separate thread when
+         * publishProgress() is called.
+         */
+        @Override
+        protected void onProgressUpdate(String... values) {
+
+            String msg = values[0];
+            if(msg == null) return;
+
+
+
+            super.onProgressUpdate(values);
+        }
+
+    }
+
+
+
+    public class WiFiSocketTasks extends AsyncTask<Void, String, Void> {
+
+
+
+
+        // Constructor
+        WiFiSocketTasks() {
+
+            Log.e("TAG","------------------3--------------------------------");
+        }
+
+        /**
+         * Main method of AsyncTask, opens a socket and continuously reads from it
+         */
+        @Override
+        protected Void doInBackground(Void... arg) {
+
+
+
 
             return null;
         }
