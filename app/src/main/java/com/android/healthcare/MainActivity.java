@@ -1,7 +1,10 @@
 package com.android.healthcare;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
@@ -19,8 +22,18 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -36,10 +49,19 @@ public class MainActivity extends AppCompatActivity {
     LocationManager lm;
     public WifiManager mWifiManager;
     ServerSocket serverSocket;
-    private PrintWriter output;
-    private BufferedReader input;
+
+    String[] PERMISSIONS = new String[]{  //creating an array of permissions.
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.ACCESS_WIFI_STATE,
+            Manifest.permission.CHANGE_NETWORK_STATE,
+            Manifest.permission.INTERNET,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION
+    };
 
     Button button;
+
+    String URL = "https://api.thingspeak.com/update?api_key=0DFD2MDEODZ10ZN3&field1=5";
     // Tag for logging
     private final String TAG = getClass().getSimpleName();
 
@@ -59,6 +81,9 @@ public class MainActivity extends AppCompatActivity {
         lm = (LocationManager) this.getApplicationContext().getSystemService(LOCATION_SERVICE);
         mWifiManager = (WifiManager) this.getApplicationContext().getSystemService(WIFI_SERVICE);
 
+        if (hasPermissions(this, PERMISSIONS)){ //checking permission is granted or not.
+            ActivityCompat.requestPermissions(MainActivity.this, PERMISSIONS, 1);
+        }
 
         button = findViewById(R.id.button);
         button.setOnClickListener(new View.OnClickListener() {
@@ -68,7 +93,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        WiFiSocketTask wifi= new  WiFiSocketTask("localhost",9600);
+        new  WiFiSocketTask("localhost",9600).execute();
+
+        //loadToServer loadToServer = new loadToServer(URL);
+        new loadToServer(URL).execute();
+
 
     }
 
@@ -84,6 +113,17 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+
+    public static boolean hasPermissions(Context context, String... permissions) { //request permission.
+        if (context != null && permissions != null) {
+            for (String permission : permissions) {
+                if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     public void scan() {
 
@@ -157,27 +197,58 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    class loadToServer extends AsyncTask<Void, String, Void> {
+
+
+        String URL;
+        loadToServer(String url){
+            this.URL = url;
+        }
+
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+
+            HttpClient httpclient;
+            HttpResponse response = null;
+
+            StatusLine statusLine ;
+
+            try {
+                httpclient = new DefaultHttpClient();
+                response = httpclient.execute(new HttpGet(URL));
+
+            }catch (Exception e1){
+                Log.e("TAG",e1.toString());
+            }
+            statusLine = response.getStatusLine();
+            try {
+
+                if(statusLine.getStatusCode() == HttpStatus.SC_OK){
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    response.getEntity().writeTo(out);
+                    String responseString = out.toString();
+                    Toast.makeText(getApplicationContext(),responseString,Toast.LENGTH_LONG).show();
+                    out.close();
+                    //..more logic
+                } else{
+                    //Closes the connection.
+                    response.getEntity().getContent().close();
+                    throw new IOException(statusLine.getReasonPhrase());
+                }
+            }catch (Exception e){
+                Log.e("TAG",e.toString());
+            }
+
+            Log.e("TAG","--------------------------------------------------");
+            return null;
+        }
+
+    }
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    /**
+        /**
      * AsyncTask that connects to a remote host over WiFi and reads/writes the connection
      * using a socket. The read loop of the AsyncTask happens in a separate thread, so the
      * main UI thread is not blocked. However, the AsyncTask has a way of sending data back
@@ -211,18 +282,19 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected Void doInBackground(Void... arg) {
 
+
             try {
 
                 serverSocket = new ServerSocket(9600);
 
                 socket = serverSocket.accept();
                 if (socket.isConnected()){
-                    Toast.makeText(getApplicationContext(),"CONNECTED",Toast.LENGTH_LONG).show();
+                    Log.e("TAG","CONNECTED");
                 }else {
-                    Toast.makeText(getApplicationContext(),"NOT CONNECTED",Toast.LENGTH_LONG).show();
+                    Log.e("TAG","NOT CONNECTED");
                 }
-                output = new PrintWriter(socket.getOutputStream());
-                input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                PrintWriter output = new PrintWriter(socket.getOutputStream());
+                BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
 
             } catch (Exception e) {
