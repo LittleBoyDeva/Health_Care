@@ -91,12 +91,20 @@ public class MainActivity extends AppCompatActivity {
                 scan();
             }
         });
+        
+        
+        
+        URL url = new URL("http://example.com");
+HttpURLConnection con = (HttpURLConnection) url.openConnection();
+con.setRequestMethod("GET");
 
         Log.e("TAG","-----------------start---------------------------------");
 
         new  WiFiSocketTask("localhost",9600).execute();
 
         new  WiFiSocketTasks().execute();
+        
+        
 
         loadToServer loadToServer = new loadToServer(URL);
         new loadToServer(URL).execute();
