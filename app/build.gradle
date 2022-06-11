@@ -3,7 +3,8 @@ plugins {
 }
 
 android {
-    compileSdk 32
+    compileSdkVersion 32
+    buildToolsVersion '30.0.2'
 
     packagingOptions {
         resources.excludes.add("META-INF/*")
@@ -38,7 +39,7 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
     //custom dependencies
-    implementation 'org.apache.httpcomponents:httpclient:4.5.6'
+    //implementation 'org.apache.httpcomponents:httpclient:4.5.6'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

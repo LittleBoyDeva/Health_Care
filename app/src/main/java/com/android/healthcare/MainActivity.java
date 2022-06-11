@@ -1,7 +1,6 @@
 package com.android.healthcare;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -14,9 +13,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.CompoundButton;
-import android.widget.Switch;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -24,22 +20,16 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.net.InetSocketAddress;
+import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URL;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
@@ -85,80 +75,42 @@ public class MainActivity extends AppCompatActivity {
         }
 
         button = findViewById(R.id.button);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                scan();
-            }
-        });
-        
-        
-        
-        URL url = new URL("http://example.com");
-HttpURLConnection con = (HttpURLConnection) url.openConnection();
-con.setRequestMethod("GET");
-
-        Log.e("TAG","-----------------start---------------------------------");
-
-        new  WiFiSocketTask("localhost",9600).execute();
-
-        new  WiFiSocketTasks().execute();
-        
+        button.setOnClickListener(view -> scan());
         
 
-        loadToServer loadToServer = new loadToServer(URL);
-        new loadToServer(URL).execute();
-        Log.e("TAG","--------------------end------------------------------");
 
         Thread thread = new Thread() {
             @Override
             public void run() {
                 try {
-                    while(true) {
-                        sleep(1000);
-                        Log.e("TAG","----------------6----------------------------------");
-
-                        HttpClient httpclient;
-                        HttpResponse response = null;
-
-                        StatusLine statusLine ;
-
+                    try {
+                        URL url = new URL(URL);
+                        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
                         try {
-                            httpclient = new DefaultHttpClient();
-                            response = httpclient.execute(new HttpGet(URL));
-
-                        }catch (Exception e1){
-                            Log.e("TAG",e1.toString());
+                            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                            Log.e("TAG", String.valueOf(in.read()));
+                        } finally {
+                            urlConnection.disconnect();
                         }
-                        statusLine = response.getStatusLine();
-                        try {
-
-                            if(statusLine.getStatusCode() == HttpStatus.SC_OK){
-                                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                                response.getEntity().writeTo(out);
-                                String responseString = out.toString();
-                                Toast.makeText(getApplicationContext(),responseString,Toast.LENGTH_LONG).show();
-                                out.close();
-                                //..more logic
-                            } else{
-                                //Closes the connection.
-                                response.getEntity().getContent().close();
-                                throw new IOException(statusLine.getReasonPhrase());
-                            }
-                        }catch (Exception e){
-                            Log.e("TAG",e.toString());
-                        }
-
-                        Log.e("TAG","---------------------7-----------------------------");
-                        //handler.post(this);
+                    }catch (Exception e){
+                        Log.e("TAG",e.toString()+" LINE COMMAND");
                     }
-                } catch (InterruptedException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         };
 
         thread.start();
+
+        Log.e("TAG","-----------------start---------------------------------");
+
+        new  WiFiSocketTask("localhost",9600).execute();
+
+        //new  WiFiSocketTasks().execute();
+        
+
+        Log.e("TAG","--------------------end------------------------------");
 
     }
 
@@ -258,26 +210,6 @@ con.setRequestMethod("GET");
     }
 
 
-    class loadToServer extends AsyncTask<Void, String, Void> {
-
-
-        String URL;
-        loadToServer(String url){
-            this.URL = url;
-            Log.e("TAG","-------------1-------------------------------------");
-        }
-
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-
-
-            return null;
-        }
-
-    }
-
-
 
         /**
      * AsyncTask that connects to a remote host over WiFi and reads/writes the connection
@@ -305,8 +237,6 @@ con.setRequestMethod("GET");
         WiFiSocketTask(String address, int port) {
             this.address = address;
             this.port = port;
-
-            Log.e("TAG","------------------3--------------------------------");
         }
 
         /**
@@ -315,12 +245,16 @@ con.setRequestMethod("GET");
         @Override
         protected Void doInBackground(Void... arg) {
 
+            Log.e("TAG","------------------before execution --------------------------------");
 
             try {
 
                 serverSocket = new ServerSocket(9600);
 
+                Log.e("TAG","waiting to client");
+
                 socket = serverSocket.accept();
+
                 if (socket.isConnected()){
                     Log.e("TAG","CONNECTED");
                 }else {
@@ -347,48 +281,7 @@ con.setRequestMethod("GET");
                 e.printStackTrace();
             }
 
-            return null;
-        }
-
-        /**
-         * This function runs in the UI thread but receives data from the
-         * doInBackground() function running in a separate thread when
-         * publishProgress() is called.
-         */
-        @Override
-        protected void onProgressUpdate(String... values) {
-
-            String msg = values[0];
-            if(msg == null) return;
-
-
-
-            super.onProgressUpdate(values);
-        }
-
-    }
-
-
-
-    public class WiFiSocketTasks extends AsyncTask<Void, String, Void> {
-
-
-
-
-        // Constructor
-        WiFiSocketTasks() {
-
-            Log.e("TAG","------------------3--------------------------------");
-        }
-
-        /**
-         * Main method of AsyncTask, opens a socket and continuously reads from it
-         */
-        @Override
-        protected Void doInBackground(Void... arg) {
-
-
-
+            Log.e("TAG","------------------after execution --------------------------------");
 
             return null;
         }
@@ -410,4 +303,5 @@ con.setRequestMethod("GET");
         }
 
     }
+
 }
