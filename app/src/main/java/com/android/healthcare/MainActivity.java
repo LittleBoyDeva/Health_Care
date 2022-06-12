@@ -11,8 +11,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
 
     Button button;
 
-    String URL = "https://api.thingspeak.com/update?api_key=0DFD2MDEODZ10ZN3&field1=5";
+    String URL = "https://api.thingspeak.com/update?api_key=0DFD2MDEODZ10ZN3&field1=";
 
 
 
@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 try {
                     try {
-                        URL url = new URL(URL);
+                        URL url = new URL(URL+7);
                         HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
                         try {
                             InputStream in = new BufferedInputStream(urlConnection.getInputStream());
@@ -93,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
                             urlConnection.disconnect();
                         }
                     }catch (Exception e){
-                        Log.e("TAG",e.toString()+" LINE COMMAND");
+                        Log.e("TAG", e +" LINE COMMAND");
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -103,11 +103,11 @@ public class MainActivity extends AppCompatActivity {
 
         thread.start();
 
+
+
         Log.e("TAG","-----------------start---------------------------------");
 
         new  WiFiSocketTask("localhost",9600).execute();
-
-        //new  WiFiSocketTasks().execute();
         
 
         Log.e("TAG","--------------------end------------------------------");
@@ -253,7 +253,21 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.e("TAG","waiting to client");
 
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),"waiting to client connect",Toast.LENGTH_LONG).show();
+                    }
+                });
+
                 socket = serverSocket.accept();
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),"CONNECTED",Toast.LENGTH_LONG).show();
+                    }
+                });
 
                 if (socket.isConnected()){
                     Log.e("TAG","CONNECTED");
@@ -267,6 +281,14 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 Log.e("TAG", "Error in socket thread!");
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),"Error in socket thread!",Toast.LENGTH_LONG).show();
+                    }
+                });
+
             }
 
             // Send a disconnect message
