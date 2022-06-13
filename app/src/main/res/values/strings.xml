@@ -5,4 +5,5 @@
     <string name="wifi_request_for_p2p">App need to Turn on wifi in order to Scan nearby devices.</string>
     <string name="turn_on_wifi">Turn on WIFI</string>
     <string name="scan">Scan</string>
+    <string name="connecting">Connecting....</string>
 </resources>

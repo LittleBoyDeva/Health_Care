@@ -13,7 +13,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -50,7 +49,6 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.ACCESS_FINE_LOCATION
     };
 
-    Button button;
 
     String URL = "https://api.thingspeak.com/update?api_key=0DFD2MDEODZ10ZN3&field1=";
 
@@ -76,8 +74,6 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(MainActivity.this, PERMISSIONS, 1);
         }
 
-        button = findViewById(R.id.button);
-        button.setOnClickListener(view -> scan());
         
 
 
