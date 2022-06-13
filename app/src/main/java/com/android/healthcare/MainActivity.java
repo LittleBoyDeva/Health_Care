@@ -1,12 +1,14 @@
 package com.android.healthcare;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -15,6 +17,7 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -23,9 +26,7 @@ import androidx.core.app.ActivityCompat;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -57,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+    @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -138,6 +140,7 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.Q)
     public void scan() {
 
         if (locationGPS()) {
@@ -146,6 +149,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             if (mWifiManager.isWifiEnabled()) {
                 //DO NEEDS
+                Log.e("TAG","CLICKED");
             } else {
                 alertDialogForWifiP2P();
             }
@@ -182,6 +186,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.Q)
     private void alertDialogForWifiP2P() {
         // notify user
         new AlertDialog.Builder(this)
@@ -217,6 +222,7 @@ public class MainActivity extends AppCompatActivity {
      * main UI thread is not blocked. However, the AsyncTask has a way of sending data back
      * to the UI thread. Under the hood, it is using Threads and Handlers.
      */
+    @SuppressLint("StaticFieldLeak")
     public class WiFiSocketTask extends AsyncTask<Void, String, Void> {
 
         // Location of the remote host
@@ -253,41 +259,27 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.e("TAG","waiting to client");
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(getApplicationContext(),"waiting to client connect",Toast.LENGTH_LONG).show();
-                    }
-                });
+                runOnUiThread(() -> Toast.makeText(getApplicationContext(),"waiting to client connect",Toast.LENGTH_LONG).show());
 
                 socket = serverSocket.accept();
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(getApplicationContext(),"CONNECTED",Toast.LENGTH_LONG).show();
-                    }
-                });
+                runOnUiThread(() -> Toast.makeText(getApplicationContext(),"CONNECTED",Toast.LENGTH_LONG).show());
 
                 if (socket.isConnected()){
                     Log.e("TAG","CONNECTED");
                 }else {
                     Log.e("TAG","NOT CONNECTED");
                 }
-                PrintWriter output = new PrintWriter(socket.getOutputStream());
-                BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+                /*PrintWriter output = new PrintWriter(socket.getOutputStream());
+                BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));*/
 
 
             } catch (Exception e) {
                 e.printStackTrace();
                 Log.e("TAG", "Error in socket thread!");
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(getApplicationContext(),"Error in socket thread!",Toast.LENGTH_LONG).show();
-                    }
-                });
+                runOnUiThread(() -> Toast.makeText(getApplicationContext(),"Error in socket thread!",Toast.LENGTH_LONG).show());
 
             }
 
